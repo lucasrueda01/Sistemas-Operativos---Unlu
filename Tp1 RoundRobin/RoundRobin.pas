@@ -3,7 +3,7 @@ Program RoundRobin;
 Uses sysutils,crt;
 
 const 
-    MAX = 10;
+    MAX = 5;
     Q = 4;
 
 type
@@ -22,7 +22,8 @@ type
 var
     Procesos: array[1..MAX] of Proceso;
     Resultados: array[1..MAX] of Resultado;
-    i,Reloj:integer;
+    i,j,Reloj,ronda,sumaRetorno,sumaEspera:integer;
+    
 
 function tiempoDeServicioTotal(): integer;
 var 
@@ -30,49 +31,77 @@ var
 begin
     suma := 0;
     for i := 1 to Length(Procesos) do 
-        suma := suma + Procesos[i].TiempoServicio;
+        suma := suma + Resultados[i].TiempoServicio;
     tiempoDeServicioTotal := suma;
 end;
 
-procedure generarProcesos();
+procedure inicializarProcesos();
 var
-    i:integer;
+    i,n:integer;
 begin
     Randomize;
     for i:= 1 to Length(Procesos) do begin
         Procesos[i].ProcessID := Chr(64 + i);
-        Procesos[i].tiempoServicio := Random(15) + 1;
+        Resultados[i].ProcessID := Chr(64 + i);
+        n := Random(15) + 1;
+        Procesos[i].TiempoServicio := n;
+        Resultados[i].TiempoServicio := n;
     end;
-
-
 end;
 
+
 Begin
-    generarProcesos();
-    Reloj := 0;  
+
+    WriteLn('PIDs y su Tiempo de servicio:');
+    inicializarProcesos();
     for i:= 1 to Length(Procesos) do begin
         WriteLn(Procesos[i].ProcessID + ' - ' + Procesos[i].tiempoServicio.ToString);
     end;
-    WriteLn('Continuar');
+    WriteLn('Utilizar RoundRobin');
     readkey;
+    Reloj := 0;  
+    ronda := 1;
+    sumaRetorno := 0;
+    sumaEspera := 0;
 
     while tiempoDeServicioTotal() > 0 do begin
+
         for i:=1 to Length(Procesos) do begin
-            if Procesos[i].tiempoServicio > Q then begin
-                Procesos[i].tiempoServicio := Procesos[i].tiempoServicio - Q;
+            if Resultados[i].TiempoServicio > Q then begin
+                Resultados[i].TiempoServicio := Resultados[i].TiempoServicio - Q;
                 Reloj := Reloj + Q;
             end
             else begin
-                Reloj := Reloj + Procesos[i].tiempoServicio;
-                Procesos[i].tiempoServicio := 0;
+                Reloj := Reloj + Resultados[i].TiempoServicio;  
+                if Resultados[i].TiempoServicio > 0 then begin
+                    Resultados[i].TiempoServicio := 0; 
+                    sumaRetorno := sumaRetorno + Reloj;  
+                    sumaEspera := sumaEspera + (Reloj - Procesos[i].TiempoServicio);
+                end; 
             end;
-            Resultados[i].ProcessID := Procesos[i].ProcessID;
-            Resultados[i].TiempoServicio := Procesos[i].tiempoServicio;
             Resultados[i].R := Reloj;
         end; 
+
+        //mostrar resultados
+        WriteLn('----------Ronda ' + ronda.ToString +  '----------');
+        WriteLn('PID - Tiempo de Servicio restante - Reloj - (Q = ' + Q.ToString + ')');
+        for j:=1 to Length(Resultados) do begin
+            WriteLn(Resultados[j].ProcessID + ' - ' + Resultados[j].TiempoServicio.ToString + ' - ' + Resultados[j].R.ToString);
+            readkey;
+        end;
+        WriteLn('');
+        if tiempoDeServicioTotal() > 0 then
+            WriteLn('Continuar a la siguiente ronda...')
+        else begin
+            WriteLn('RoundRobin finalizado');
+            WriteLn('Tiempo de retorno promedio: ' + (sumaRetorno/Length(Procesos)).ToString);
+            WriteLn('Tiempo de espera promedio: ' + (sumaEspera/Length(Procesos)).ToString);
+            Break;
+        end;
+        Writeln('');
+        readkey;
+        inc(ronda);
+
     end;
-
-   
-
 
 End.
